@@ -2,7 +2,6 @@
 // CONTROLES DO PLAYER PRINCIPAL E MINI-PLAYER
 // ================================================
 const PlayerControls = (() => {
-  // Elementos do DOM
   const audio = document.getElementById('radio-player');
   const playBtn = document.getElementById('play-pause-btn');
   const nextBtn = document.getElementById('next-btn');
@@ -11,13 +10,12 @@ const PlayerControls = (() => {
   const miniPlayBtn = document.querySelector('.mini-play-btn');
   const miniPlayer = document.getElementById('mini-player');
 
-  // Estado
   let isPlaying = false;
-  let episodes = []; // Lista de episódios carregados do RSS
+  let episodes = [];
   let currentIndex = 0;
   let lastScrollPosition = window.pageYOffset;
 
-  // Mini-player: aparece ao rolar para baixo
+  // Mini-player scroll behavior
   const setupScrollBehavior = () => {
     const handleScroll = () => {
       const current = window.pageYOffset;
@@ -33,15 +31,13 @@ const PlayerControls = (() => {
   };
   const cleanupScroll = setupScrollBehavior();
 
-  // Define a lista de episódios
   function setEpisodes(newEpisodes) {
     if (!Array.isArray(newEpisodes) || newEpisodes.length === 0) return;
     episodes = newEpisodes;
-    setCurrentIndex(0); // Inicia no mais recente
+    setCurrentIndex(0);
     StationGrid.atualizarGrade(episodes);
   }
 
-  // Define episódio atual
   function setCurrentIndex(index) {
     if (index < 0 || index >= episodes.length) return;
     currentIndex = index;
@@ -57,7 +53,6 @@ const PlayerControls = (() => {
     return isPlaying;
   }
 
-  // Atualiza ícones play/pause
   function updatePlayIcons(icon) {
     const html = `<span class="material-icons">${icon}</span>`;
     if (playBtn) playBtn.innerHTML = html;
@@ -66,9 +61,11 @@ const PlayerControls = (() => {
     if (miniIcon) miniIcon.textContent = icon;
   }
 
-  // Reproduz episódio atual
   function play() {
-    if (!episodes[currentIndex]?.audioUrl) return;
+    if (!episodes[currentIndex]?.audioUrl) {
+      alert('Nenhum áudio disponível para este episódio.');
+      return;
+    }
     audio.src = episodes[currentIndex].audioUrl;
     audio.play()
       .then(() => {
@@ -78,12 +75,11 @@ const PlayerControls = (() => {
         miniPlayer?.classList.add('active', 'visible', 'sticky');
       })
       .catch(err => {
-        console.error('Erro ao tocar episódio:', err);
-        alert('Não foi possível reproduzir este episódio. Tente outro.');
+        console.error('Erro ao reproduzir:', err);
+        alert('Falha ao tocar o episódio. Verifique o console para detalhes.');
       });
   }
 
-  // Pausa
   function pause() {
     audio.pause();
     updatePlayIcons('play_arrow');
@@ -91,7 +87,6 @@ const PlayerControls = (() => {
     StationGrid.atualizarGrade(episodes);
   }
 
-  // Atualiza display do episódio atual
   function displayEpisode(index) {
     const ep = episodes[index];
     if (!ep) return;
@@ -100,7 +95,6 @@ const PlayerControls = (() => {
     const desc = ep.description || 'Sem descrição';
     const thumb = ep.thumbnail || 'https://via.placeholder.com/150';
 
-    // Mini-player
     if (miniPlayer) {
       const miniName = miniPlayer.querySelector('#mini-station-name');
       const miniDesc = miniPlayer.querySelector('#mini-station-country');
@@ -109,20 +103,20 @@ const PlayerControls = (() => {
       miniPlayer.classList.add('active');
     }
 
-    // Player principal
-    document.getElementById('artist-name')?.setAttribute('textContent', title);
-    document.getElementById('song-name')?.setAttribute('textContent', desc.substring(0, 50) + (desc.length > 50 ? '...' : ''));
+    document.getElementById('artist-name')?.textContent = title;
+    document.getElementById('song-name')?.textContent = desc.substring(0, 50) + (desc.length > 50 ? '...' : '');
 
     if (coverArt) coverArt.style.backgroundImage = `url(${thumb})`;
   }
 
-  // Eventos dos botões
   if (playBtn) playBtn.addEventListener('click', () => isPlaying ? pause() : play());
   if (nextBtn) nextBtn.addEventListener('click', () => {
+    if (!episodes.length) return;
     setCurrentIndex((currentIndex + 1) % episodes.length);
     if (isPlaying) play();
   });
   if (prevBtn) prevBtn.addEventListener('click', () => {
+    if (!episodes.length) return;
     setCurrentIndex((currentIndex - 1 + episodes.length) % episodes.length);
     if (isPlaying) play();
   });
@@ -139,7 +133,7 @@ const PlayerControls = (() => {
 })();
 
 // ================================================
-// GRADE DE EPISÓDIOS (antiga stations-grid)
+// GRADE DE EPISÓDIOS
 // ================================================
 const StationGrid = (() => {
   const grid = document.querySelector('.stations-grid');
@@ -154,7 +148,7 @@ const StationGrid = (() => {
       item.classList.add('station-item');
       item.dataset.index = index;
       item.innerHTML = `
-        <img src="${ep.thumbnail || 'https://via.placeholder.com/50'}" alt="${ep.title}">
+        <img src="${ep.thumbnail}" alt="${ep.title}">
         <div class="station-info">
           <span class="station-name">${ep.title}</span>
           <span class="station-country">${ep.description.substring(0, 30)}${ep.description.length > 30 ? '...' : ''}</span>
@@ -169,7 +163,6 @@ const StationGrid = (() => {
     });
   }
 
-  // Filtro de busca
   if (searchInput) {
     searchInput.addEventListener('input', e => {
       const term = e.target.value.toLowerCase();
@@ -188,13 +181,16 @@ const StationGrid = (() => {
 // FETCH DO RSS VIA PROXY VERCEL (/api/podcast)
 // ================================================
 const PodcastFetcher = (() => {
-  const proxyUrl = '/api/podcast'; // Seu proxy serverless no Vercel
+  const proxyUrl = '/api/podcast'; // Seu proxy serverless (Vercel)
 
   function fetchEpisodes() {
     const grid = document.querySelector('.stations-grid');
-    if (grid) grid.innerHTML = '<p style="text-align:center; color:#aaa; padding:2rem;">Carregando episódios...</p>';
+    if (grid) grid.innerHTML = '<p style="text-align:center; color:#aaa; padding:2rem;">Carregando episódios do podcast...</p>';
 
-    fetch(proxyUrl)
+    fetch(proxyUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/xml' }
+    })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         return res.text();
@@ -204,38 +200,44 @@ const PodcastFetcher = (() => {
         const xml = parser.parseFromString(xmlText, 'text/xml');
 
         const parseError = xml.querySelector('parsererror');
-        if (parseError) throw new Error('XML inválido: ' + parseError.textContent);
+        if (parseError) throw new Error(`Erro no XML: ${parseError.textContent || 'Formato inválido'}`);
 
         const items = xml.querySelectorAll('item');
-        if (items.length === 0) throw new Error('Nenhum episódio encontrado');
+        if (items.length === 0) throw new Error('Nenhum episódio encontrado no feed RSS');
 
         const episodes = Array.from(items).map(item => {
           const enclosure = item.querySelector('enclosure');
+          const itunesImage = item.querySelector('itunes\\:image') || item.querySelector('image');
           return {
-            title: item.querySelector('title')?.textContent.trim() || 'Sem título',
-            description: item.querySelector('description')?.textContent.trim() || 'Sem descrição',
-            pubDate: item.querySelector('pubDate')?.textContent || 'Sem data',
+            title: item.querySelector('title')?.textContent?.trim() || 'Sem título',
+            description: item.querySelector('description')?.textContent?.trim() || 'Sem descrição',
+            pubDate: item.querySelector('pubDate')?.textContent?.trim() || 'Sem data',
             audioUrl: enclosure?.getAttribute('url') || '',
-            thumbnail: item.querySelector('itunes\\:image')?.getAttribute('href') ||
-                       item.querySelector('image')?.querySelector('url')?.textContent ||
+            thumbnail: itunesImage?.getAttribute('href') ||
+                       itunesImage?.querySelector('url')?.textContent ||
                        'https://via.placeholder.com/150'
           };
         });
 
-        // Ordena por data descendente
+        // Ordenação por data descendente (mais recente primeiro)
         episodes.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
         PlayerControls.setEpisodes(episodes);
-        console.log(`Sucesso: ${episodes.length} episódios carregados`);
+        console.log(`Sucesso: ${episodes.length} episódios carregados do RSS`);
       })
       .catch(err => {
-        console.error('Falha no fetch RSS via proxy:', err);
+        console.error('Falha completa no fetch RSS via proxy:', err);
         if (grid) {
           grid.innerHTML = `
             <p style="color:#ff6b6b; text-align:center; padding:2rem;">
-              Erro ao carregar episódios.<br>
+              Falha ao carregar episódios do podcast.<br>
               <small>${err.message}</small><br>
-              Verifique: /api/podcast.js existe? RSS correto? Vercel deploy atualizado?
+              Verifique:
+              <ul style="text-align:left; margin:1rem auto; max-width:600px;">
+                <li>O arquivo /api/podcast.js existe na raiz?</li>
+                <li>O RSS está correto em api/podcast.js?</li>
+                <li>O deploy no Vercel foi atualizado?</li>
+              </ul>
             </p>
           `;
         }
@@ -247,11 +249,11 @@ const PodcastFetcher = (() => {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-  PodcastFetcher.fetchEpisodes(); // Carrega episódios
+  PodcastFetcher.fetchEpisodes();
   setupPainelAlternancia();
   setupMiniPlayerControles();
   setupMiniPlayerToggle();
 });
 
-// Mantenha as outras funções existentes (volume, alternância de painel, etc.)
-// Elas continuam funcionando normalmente
+// Mantenha as outras funções (volume, alternância, mini-player, etc.) intactas
+// Elas continuam funcionando com os episódios carregados
