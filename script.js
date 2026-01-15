@@ -186,44 +186,70 @@ const StationGrid = (() => {
   return { atualizarGrade };
 })();
 
-// Fetch de episódios do RSS do podcast (sem API, só parse do XML)
+// Fetch de episódios do RSS do podcast usando proxy próprio no Vercel
 const PodcastFetcher = (() => {
-  const proxy = 'https://cors-anywhere.herokuapp.com/corsdemo'; // Proxy para CORS (ative em https://cors-anywhere.herokuapp.com/corsdemo)
-  const rssUrl = 'https://creators.spotify.com/pod/profile/clevencast'; // ← TROQUE PELO SEU RSS REAL (obtenha no Spotify for Creators > Settings > RSS Distribution)
+  // URL do proxy que criamos na pasta api/ (Vercel cria automaticamente /api/podcast)
+  const proxyUrl = '/api/podcast';
 
   function fetchEpisodes() {
-    fetch(proxy + rssUrl)
+    // Mostra loading
+    const grid = document.querySelector('.stations-grid');
+    if (grid) grid.innerHTML = '<p style="text-align:center; color:#aaa;">Carregando episódios do podcast...</p>';
+
+    fetch(proxyUrl)
       .then(response => {
-        if (!response.ok) throw new Error('Erro ao carregar RSS');
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
         return response.text();
       })
-      .then(str => new DOMParser().parseFromString(str, 'text/xml'))
-      .then(xml => {
+      .then(str => {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(str, 'text/xml');
+
+        if (xml.querySelector('parsererror')) {
+          throw new Error('Formato RSS inválido ou feed não encontrado');
+        }
+
         const items = xml.querySelectorAll('item');
+        if (items.length === 0) {
+          throw new Error('Nenhum episódio encontrado no RSS');
+        }
+
         const episodes = Array.from(items).map(item => ({
           title: item.querySelector('title')?.textContent || 'Sem título',
           description: item.querySelector('description')?.textContent || 'Sem descrição',
           pubDate: item.querySelector('pubDate')?.textContent || 'Data desconhecida',
           audioUrl: item.querySelector('enclosure')?.getAttribute('url') || '',
-          thumbnail: item.querySelector('itunes\\:image')?.getAttribute('href') || 
-                     item.querySelector('image')?.querySelector('url')?.textContent || 
+          thumbnail: item.querySelector('itunes\\:image')?.getAttribute('href') ||
+                     item.querySelector('image')?.querySelector('url')?.textContent ||
                      'https://via.placeholder.com/150'
         }));
 
         // Ordena por data (mais recente primeiro)
         episodes.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
+        // Envia para o player
         PlayerControls.setEpisodes(episodes);
+
+        console.log(`Carregados ${episodes.length} episódios com sucesso!`);
       })
       .catch(err => {
-        console.error('Erro ao carregar RSS do podcast:', err);
-        document.querySelector('.stations-grid').innerHTML = '<p style="color:#ff6b6b; text-align:center;">Erro ao carregar episódios. Verifique o RSS e proxy CORS.</p>';
+        console.error('Erro ao carregar RSS via proxy:', err);
+        if (grid) {
+          grid.innerHTML = `
+            <p style="color:#ff6b6b; text-align:center; padding: 2rem;">
+              Erro ao carregar episódios.<br>
+              <small>${err.message}</small><br>
+              Verifique se o arquivo /api/podcast.js está correto e o RSS está válido.
+            </p>
+          `;
+        }
       });
   }
 
   return { fetchEpisodes };
 })();
-
 // Inicialização do app
 document.addEventListener('DOMContentLoaded', () => {
   PodcastFetcher.fetchEpisodes(); // Carrega episódios do RSS
