@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>online web radio</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+</head>
+<body>
+  <main class="container">
+
+  <!-- Player Principal --> 
+<section class="painel player ativo" aria-label="Player de Música">
+  <header class="topo-botoes">
+    <button id="view-stations-btn-player" class="botao-topo" aria-label="Ver estações disponíveis">
+      <span class="material-icons">add</span>
+    </button>
+  </header>
+
+  <figure class="capa-container">
+    <div class="capa" id="cover-art" aria-label="Imagem da estação"></div>
+  </figure>
+
+  <div class="info-musica">
+    <h1 id="artist-name">...</h1>
+    <p id="song-name">...</p>
+  </div>
+
+  <!-- Controles de volume -->
+  <div class="controle-volume">
+  <button id="volume-icon-btn" aria-label="Mudo" class="icone-volume">
+    <span id="volume-icon" class="material-icons">volume_up</span>
+  </button>
+  <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+</div>
+
+
+  <nav class="controles" aria-label="Controles de reprodução">
+    <button id="prev-btn" aria-label="Anterior"><span class="material-icons">skip_previous</span></button>
+    <button id="play-pause-btn" aria-label="Tocar/Pausar"><span class="material-icons">play_arrow</span></button>
+    <button id="next-btn" aria-label="Próxima"><span class="material-icons">skip_next</span></button>
+  </nav>
+</section>
+
+
+    <!-- Lista de Estações -->
+<section class="painel estacoes-lista" aria-label="Lista de Estações">
+  <header class="topo-botoes">
+    <button id="view-stations-btn-list" class="botao-topo" aria-label="Voltar ao player">
+      <span class="material-icons">remove</span>
+    </button>
+
+    <div class="search-bar">
+      <span class="material-icons">search</span>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="..."
+        aria-label="Pesquisar estação"
+        autocomplete="off"
+      />
+    </div>
+  </header>
+
+  <div class="stations-grid-wrapper">
+    <div class="stations-grid"></div>
+  </div>
+</section>
+
+
+  <audio id="radio-player" aria-hidden="true"></audio>
+  <script src="script.js"></script>
+</body>
+</html>
+
+
